@@ -1,6 +1,5 @@
 import * as d3 from 'd3';
 
-const url = 'https://udemy-react-d3.firebaseio.com/tallest_men.json';
 const MARGIN = { TOP: 10, BOTTOM: 50, LEFT: 70, RIGHT: 10 };
 const WIDTH = 800 - MARGIN.LEFT - MARGIN.RIGHT;
 const HEIGHT = 500 - MARGIN.TOP - MARGIN.BOTTOM;
@@ -17,7 +16,7 @@ export default class D3Chart {
       .append('g')
       .attr('transform', `translate(${MARGIN.LEFT}, ${MARGIN.TOP})`);
 
-    vis.svg
+    vis.xLabel = vis.svg
       .append('text')
       .attr('x', WIDTH / 2)
       .attr('y', HEIGHT + 50)
@@ -38,17 +37,22 @@ export default class D3Chart {
 
     vis.yAxisGroup = vis.svg.append('g');
 
-    d3.json(url).then((data) => {
-      vis.data = data;
-
-      d3.interval(() => {
-        vis.update(data);
-      }, 1000);
+    Promise.all([
+      d3.json('https://udemy-react-d3.firebaseio.com/tallest_men.json'),
+      d3.json('https://udemy-react-d3.firebaseio.com/tallest_women.json'),
+    ]).then((datasets) => {
+      vis.menData = datasets[0];
+      vis.womenData = datasets[1];
+      vis.update('men');
     });
   }
 
-  update() {
+  update(gender) {
     const vis = this;
+
+    vis.data = gender == 'men' ? vis.menData : vis.womenData;
+    vis.xLabel.text("the world's tallest ${gender}");
+
     const y = d3
       .scaleLinear()
       .domain([
@@ -64,20 +68,43 @@ export default class D3Chart {
       .padding(0.5);
 
     const xAxisCall = d3.axisBottom(x);
-    vis.xAxisGroup.call(xAxisCall);
+    vis.xAxisGroup.transition().duration(500).call(xAxisCall);
 
     const yAxisCall = d3.axisLeft(y);
-    vis.yAxisGroup.call(yAxisCall);
+    vis.yAxisGroup.transition().duration(500).call(yAxisCall);
 
+    //. DATA JOIN
     const rects = vis.svg.selectAll('rect').data(vis.data);
 
+    // EXIT
+    rects
+      .exit()
+      .transition()
+      .duration(500)
+      .attr('height', 0)
+      .attr('y', HEIGHT)
+      .remove();
+
+    // UPDATE
+    rects
+      .transition()
+      .duration(500)
+      .attr('x', (d, i) => x(d.name))
+      .attr('y', (d) => y(d.height))
+      .attr('width', x.bandwidth)
+      .attr('height', (d) => HEIGHT - y(d.height));
+
+    // ENTER
     rects
       .enter()
       .append('rect')
       .attr('x', (d, i) => x(d.name))
-      .attr('y', (d) => y(d.height))
       .attr('width', x.bandwidth)
+      .attr('fill', '#a30')
+      .attr('y', (d) => HEIGHT)
+      .transition()
+      .duration(500)
       .attr('height', (d) => HEIGHT - y(d.height))
-      .attr('fill', '#a30');
+      .attr('y', (d) => y(d.height));
   }
 }

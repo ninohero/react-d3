@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import D3Chart from './D3Chart';
 
-const ChartWrapper = () => {
+const ChartWrapper = ({ gender }) => {
   const chartArea = useRef(null);
   const [chart, setChart] = useState(null);
 
@@ -9,7 +9,11 @@ const ChartWrapper = () => {
     if (!chart) {
       setChart(new D3Chart(chartArea.current));
     }
-  }, [chart]);
+    // skip the loading state when data is a pe nding promise
+    else if (chart.menData) {
+      chart.update(gender);
+    }
+  }, [chart, gender]);
 
   return <div className="chart-area" ref={chartArea}></div>;
 };
